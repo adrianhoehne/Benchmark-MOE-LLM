@@ -1,0 +1,14 @@
+#!/bin/bash
+# Results File Name, Model, Layer on CPU for UB 4096, 3072, 2048, 1024, 512 runs
+# e.g. qwen-performance bartowski/Qwen_Qwen3.6-35B-A3B-GGUF:Q4_XS 34 28 27 24 22 80000,
+#       $3=ub4096  $4=ub3072  $5=ub2048  $6=ub1024  $7=ub512  $8=ctv
+CTV="${8:-q8_0}"
+CTK="${9:-q8_0}"
+exec hyperfine --runs 2 --export-markdown $1 --parameter-list PP 16000,1000,100 \
+"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $3 -ub 4096 -b 4096 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
+"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $4 -ub 3072 -b 3072 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
+"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $5 -ub 2048 -b 2048 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
+"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $6 -ub 1024 -b 1024 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
+"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $7 -ub 512 -b 512 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
+
+
