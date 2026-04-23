@@ -1,21 +1,39 @@
 #!/bin/bash
 # Benchmark workload - feste UB-Modell-Zuordnung
-# Argumente: <results-file> <model> [Optionen ...]
+# Argumente: <results-file> <model> [--ub*-moe <wert>...] [-ctx <ctx>] [-ctv <ctv>] [-ctk <ctk>]
 #
 # Feste Zuordnung:
-#   --ub0.5--moe <wert>  → -ub 512   → --n-cpu-moe <wert>
-#   --ub1--moe <wert>    → -ub1 1024 → --n-cpu-moe <wert>
-#   --ub2--moe <wert>    → -ub2 2048 → --n-cpu-moe <wert>
-#   --ub3--moe <wert>    → -ub3 3072 → --n-cpu-moe <wert>
-#   --ub4--moe <wert>    → -ub4 4096 → --n-cpu-moe <wert>
+#   --ub0.5-moe <wert>  → -ub 512   → --n-cpu-moe <wert>
+#   --ub1-moe <wert>    → -ub1 1024 → --n-cpu-moe <wert>
+#   --ub2-moe <wert>    → -ub2 2048 → --n-cpu-moe <wert>
+#   --ub3-moe <wert>    → -ub3 3072 → --n-cpu-moe <wert>
+#   --ub4-moe <wert>    → -ub4 4096 → --n-cpu-moe <wert>
+#
 #
 # Fehlende Werte (leere Strings) werden einfach übersprungen.
 
 RESULTS_FILE="$1"
 MODEL="$2"
-CTV="${3:-q8_0}"
-CTK="${4:-q8_0}"
-CTX="${5:-32000}"
+shift 2
+
+CTX="98304"
+CTV="q8_0"
+CTK="q8_0"
+
+# --- Argumente parsen ---
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --ub0.5-moe) MOE_ARGS[512]="$2"; shift 2 ;;
+        --ub1-moe)   MOE_ARGS[1024]="$2"; shift 2 ;;
+        --ub2-moe)   MOE_ARGS[2048]="$2"; shift 2 ;;
+        --ub3-moe)   MOE_ARGS[3072]="$2"; shift 2 ;;
+        --ub4-moe)   MOE_ARGS[4096]="$2"; shift 2 ;;
+        -ctx) CTX="$2"; shift 2 ;;
+        -ctv) CTV="$2"; shift 2 ;;
+        -ctk) CTK="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
 
 # Alle verfügbaren PP-Werte
 ALL_PP_VALUES="32000,16000,8000,4000,2000,1000,500"
@@ -49,25 +67,13 @@ declare -A MOE_MODEL=(
     [4096]="ub4096_moe"
 )
 
-# --- Argumente parsen ---
+# --- UB-Werte sortieren ---
 UB_VALUES=()
 for key in "${!UB_MAP[@]}"; do
     UB_VALUES+=("$key")
 done
 # Sortiert: 512, 1024, 2048, 3072, 4096
 IFS=$'\n' UB_VALUES=($(sort -n <<<"${UB_VALUES[*]}")); unset IFS
-
-declare -A MOE_ARGS
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --ub0.5--moe) MOE_ARGS[512]="$2"; shift 2 ;;
-        --ub1--moe)     MOE_ARGS[1024]="$2"; shift 2 ;;
-        --ub2--moe)     MOE_ARGS[2048]="$2"; shift 2 ;;
-        --ub3--moe)     MOE_ARGS[3072]="$2"; shift 2 ;;
-        --ub4--moe)     MOE_ARGS[4096]="$2"; shift 2 ;;
-        *) shift ;;
-    esac
-done
 
 # --- Prüfen ob mindestens ein Wert gefunden wurde ---
 FOUND=0

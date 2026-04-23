@@ -131,14 +131,14 @@ BENCHMARK_FILE="${BASE_NAME}_benchmark_results.md"
 bash "$(dirname "$0")/benchmark_workload" \
     "$BENCHMARK_FILE" \
     "$MODEL" \
-    $([ -n "$UB4096" ] && echo "--ub4--moe $UB4096" || true) \
-    $([ -n "$UB3072" ] && echo "--ub3--moe $UB3072" || true) \
-    $([ -n "$UB2048" ] && echo "--ub2--moe $UB2048" || true) \
-    $([ -n "$UB1024" ] && echo "--ub1--moe $UB1024" || true) \
-    $([ -n "$UB512" ] && echo "--ub0.5--moe $UB512" || true) \
-    "$CTV" \
-    "$CTK" \
-    "$CTX"
+    $([ -n "$UB4096" ] && echo "--ub4-moe $UB4096" || true) \
+    $([ -n "$UB3072" ] && echo "--ub3-moe $UB3072" || true) \
+    $([ -n "$UB2048" ] && echo "--ub2-moe $UB2048" || true) \
+    $([ -n "$UB1024" ] && echo "--ub1-moe $UB1024" || true) \
+    $([ -n "$UB512" ] && echo "--ub0.5-moe $UB512" || true) \
+    -ctv "$CTV" \
+    -ctk "$CTK" \
+    -ctx "$CTX"
 
 echo ""
 echo "=============================================="
