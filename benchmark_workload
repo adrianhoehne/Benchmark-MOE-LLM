@@ -1,14 +1,116 @@
 #!/bin/bash
-# Results File Name, Model, Layer on CPU for UB 4096, 3072, 2048, 1024, 512 runs
-# e.g. qwen-performance bartowski/Qwen_Qwen3.6-35B-A3B-GGUF:Q4_XS 34 28 27 24 22 80000,
-#       $3=ub4096  $4=ub3072  $5=ub2048  $6=ub1024  $7=ub512  $8=ctv
-CTV="${8:-q8_0}"
-CTK="${9:-q8_0}"
-exec hyperfine --runs 2 --export-markdown $1 --parameter-list PP 16000,1000,100 \
-"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $3 -ub 4096 -b 4096 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
-"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $4 -ub 3072 -b 3072 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
-"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $5 -ub 2048 -b 2048 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
-"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $6 -ub 1024 -b 1024 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
-"llama-bench -hf $2 -dev CUDA0 --n-cpu-moe $7 -ub 512 -b 512 -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $1-token-generation-results" \
+# Benchmark workload - feste UB-Modell-Zuordnung
+# Argumente: <results-file> <model> [Optionen ...]
+#
+# Feste Zuordnung:
+#   --ub0.5--moe <wert>  → -ub 512   → --n-cpu-moe <wert>
+#   --ub1--moe <wert>    → -ub1 1024 → --n-cpu-moe <wert>
+#   --ub2--moe <wert>    → -ub2 2048 → --n-cpu-moe <wert>
+#   --ub3--moe <wert>    → -ub3 3072 → --n-cpu-moe <wert>
+#   --ub4--moe <wert>    → -ub4 4096 → --n-cpu-moe <wert>
+#
+# Fehlende Werte (leere Strings) werden einfach übersprungen.
 
+RESULTS_FILE="$1"
+MODEL="$2"
+CTV="${3:-q8_0}"
+CTK="${4:-q8_0}"
+CTX="${5:-32000}"
 
+# Alle verfügbaren PP-Werte
+ALL_PP_VALUES="32000,16000,8000,4000,2000,1000,500"
+
+# PP-Werte filtern: nur Werte ≤ CTX
+PP_FILTERED=()
+IFS=',' read -ra PP_ARR <<< "$ALL_PP_VALUES"
+for val in "${PP_ARR[@]}"; do
+    if [[ "$val" -le "$CTX" ]]; then
+        PP_FILTERED+=("$val")
+    fi
+done
+IFS=',' PP_VALUES="${PP_FILTERED[*]}"
+
+# --- UB-Parameter und Modell-Zuordnung ---
+declare -A UB_MAP=(
+    [512]="ub"
+    [1024]="ub1"
+    [2048]="ub2"
+    [3072]="ub3"
+    [4096]="ub4"
+)
+
+declare -A MOE_MODEL=(
+    [512]="ub512_moe"
+    [1024]="ub1024_moe"
+    [2048]="ub2048_moe"
+    [3072]="ub3072_moe"
+    [4096]="ub4096_moe"
+)
+
+# --- Argumente parsen ---
+UB_VALUES=()
+for key in "${!UB_MAP[@]}"; do
+    UB_VALUES+=("$key")
+done
+# Sortiert: 512, 1024, 2048, 3072, 4096
+IFS=$'\n' UB_VALUES=($(sort -n <<<"${UB_VALUES[*]}")); unset IFS
+
+declare -A MOE_ARGS
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --ub0.5--moe) MOE_ARGS[512]="$2"; shift 2 ;;
+        --ub1--moe)     MOE_ARGS[1024]="$2"; shift 2 ;;
+        --ub2--moe)     MOE_ARGS[2048]="$2"; shift 2 ;;
+        --ub3--moe)     MOE_ARGS[3072]="$2"; shift 2 ;;
+        --ub4--moe)     MOE_ARGS[4096]="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+# --- Prüfen ob mindestens ein Wert gefunden wurde ---
+FOUND=0
+for key in "${UB_VALUES[@]}"; do
+    if [[ -n "${MOE_ARGS[$key]:-}" ]]; then
+        FOUND=1
+        break
+    fi
+done
+
+if [[ "$FOUND" -eq 0 ]]; then
+    echo "ERROR: Keine --ub*--moe Werte gefunden. Mindestens einer muss belegt sein."
+    exit 1
+fi
+
+# --- Hyperfine-Kommandos nur für gefundene UB-Werte aufbauen ---
+HYPERFINE_CMDS=()
+
+for key in "${UB_VALUES[@]}"; do
+    moe="${MOE_ARGS[$key]:-}"
+
+    if [[ -z "$moe" ]]; then
+        echo "  ⏭  -${UB_MAP[$key]} wird übersprungen (kein --${MOE_MODEL[$key]} gefunden)"
+        continue
+    fi
+
+    HYPERFINE_CMDS+=(
+        "llama-bench -hf $MODEL -dev CUDA0 --n-cpu-moe $moe -${UB_MAP[$key]} $key -b $key -ctk $CTK -ctv $CTV -p {PP} -n 1000 -fa 1 |tee -a $RESULTS_FILE-token-generation-results"
+    )
+done
+
+echo "=============================================="
+echo "  CTX (Max-Prompt)      : $CTX"
+echo "  Verwendete PP-Werte   : $PP_VALUES"
+echo "  Benchmark für UB-Werte:"
+echo "=============================================="
+for key in "${UB_VALUES[@]}"; do
+    moe="${MOE_ARGS[$key]:-}"
+    if [[ -n "$moe" ]]; then
+        echo "    -${UB_MAP[$key]}=$key → --n-cpu-moe=$moe  (${MOE_MODEL[$key]})"
+    fi
+done
+echo "=============================================="
+echo ""
+
+# --- Hyperfine aufrufen mit dynamischen Kommandos ---
+exec hyperfine --runs 2 --export-markdown "$RESULTS_FILE" --parameter-list PP "$PP_VALUES" \ 
+    "${HYPERFINE_CMDS[@]}"
