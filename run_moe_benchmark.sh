@@ -7,21 +7,21 @@
 set -euo pipefail
 
 MODEL=""
-MIN_CTX="98304"
+CTX="98304"
 DEBUG=0
 CTV="q8_0"
 CTK="q8_0"
 while [ $# -gt 0 ]; do
     case "$1" in
         --debug) DEBUG=1; shift ;;
-        -ctx) MIN_CTX="${2:-98304}"; shift 2 ;;
+        -ctx) CTX="${2:-98304}"; shift 2 ;;
         -ctv) CTV="${2:-q8_0}"; shift 2 ;;
         -ctk) CTK="${2:-q8_0}"; shift 2 ;;
         *)
             if [ -z "$MODEL" ]; then
                 MODEL="$1"
-            elif [ "$MIN_CTX" = "98304" ]; then
-                MIN_CTX="$1"
+            elif [ "$CTX" = "98304" ]; then
+                CTX="$1"
             fi
             shift ;;
     esac
@@ -31,7 +31,7 @@ if [ -z "$MODEL" ]; then
     echo "Usage: $0 <model-hf-path> [-ctx <context>] [-ctv <quant>] [-ctk <quant>] [--debug]"
     echo ""
     echo "  model-hf-path   z.B. bartowski/Qwen_Qwen3.6-35B-A3B-GGUF:Q4_XS"
-    echo "  -ctx min_ctx    optional: minimaler n_ctx-Wert (default: 64000)"
+    echo "  -ctx <ctx>      optional: minimaler Kontext den das Modell haben soll (default: 98304)"
     echo "  -ctv <quant>    optional: KV-Quant (default: q8_0)"
     echo "  -ctk <quant>    optional: Token-Quant (default: q8_0)"
     echo "  --debug         optional: verbose logging"
@@ -43,11 +43,11 @@ echo "=============================================="
 echo "  Step 1: find_moe — optimale Werte suchen"
 echo "=============================================="
 echo "  MODEL     = $MODEL"
-echo "  MIN_CTX   = $MIN_CTX"
+echo "  CTX       = $CTX"
 echo "  DEBUG     = $DEBUG"
 echo "  CTV       = $CTV"
 echo "  CTK       = $CTK"
-bash "$(dirname "$0")/find_moe.sh" "$MODEL" "$MIN_CTX" -ctv "$CTV" -ctk "$CTK" $([ "$DEBUG" -eq 1 ] && echo "--debug" || true)
+bash "$(dirname "$0")/find_moe.sh" "$MODEL" "$CTX" -ctv "$CTV" -ctk "$CTK" $([ "$DEBUG" -eq 1 ] && echo "--debug" || true)
 
 if [ ! -f "$RESULTS_FILE" ]; then
     echo "ERROR: $RESULTS_FILE wurde nicht erstellt."
@@ -131,13 +131,14 @@ BENCHMARK_FILE="${BASE_NAME}_benchmark_results.md"
 bash "$(dirname "$0")/benchmark_workload" \
     "$BENCHMARK_FILE" \
     "$MODEL" \
-    "$UB4096" \
-    "$UB3072" \
-    "$UB2048" \
-    "$UB1024" \
-    "$UB512" \
+    $([ -n "$UB4096" ] && echo "--ub4--moe $UB4096" || true) \
+    $([ -n "$UB3072" ] && echo "--ub3--moe $UB3072" || true) \
+    $([ -n "$UB2048" ] && echo "--ub2--moe $UB2048" || true) \
+    $([ -n "$UB1024" ] && echo "--ub1--moe $UB1024" || true) \
+    $([ -n "$UB512" ] && echo "--ub0.5--moe $UB512" || true) \
     "$CTV" \
-    "$CTK"
+    "$CTK" \
+    "$CTX"
 
 echo ""
 echo "=============================================="

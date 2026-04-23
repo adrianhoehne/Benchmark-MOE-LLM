@@ -20,7 +20,9 @@ CTX="${5:-32000}"
 # Alle verfügbaren PP-Werte
 ALL_PP_VALUES="32000,16000,8000,4000,2000,1000,500"
 
-# PP-Werte filtern: nur Werte ≤ CTX
+# PP-Werte filtern: CTX ist aus Nutzersicht das Min-Kontext →
+# wir filtern PP-Werte, die > CTX liegen (nur Werte ≤ CTX verwenden)
+# z.B. CTX=8192 → PP = 8000,4000,2000,1000,500
 PP_FILTERED=()
 IFS=',' read -ra PP_ARR <<< "$ALL_PP_VALUES"
 for val in "${PP_ARR[@]}"; do
@@ -98,7 +100,7 @@ for key in "${UB_VALUES[@]}"; do
 done
 
 echo "=============================================="
-echo "  CTX (Max-Prompt)      : $CTX"
+echo "  Minimaler Kontext     : $CTX"
 echo "  Verwendete PP-Werte   : $PP_VALUES"
 echo "  Benchmark für UB-Werte:"
 echo "=============================================="
