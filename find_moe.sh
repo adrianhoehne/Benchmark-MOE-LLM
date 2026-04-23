@@ -65,7 +65,10 @@ for ub in "${UB_VALUES[@]}"; do
 
     for moe in $(seq 50 -1 0); do
         LOGFILE=$(mktemp)
-
+        if [ "$DEBUG" -eq 1 ]; then
+            echo "[DEBUG] Using Logfile: $LOGFILE"
+        fi
+	
         llama-server -hf "$MODEL" -ctv $CTV -ctk $CTK -dev CUDA0 --parallel 1 --no-mmproj-offload -kvo -ub $ub -b $ub --n-cpu-moe $moe > "$LOGFILE" 2>&1 &
         SERVER_PID=$!
 

@@ -94,31 +94,35 @@ UB2048=$(get_moe 2048)
 UB1024=$(get_moe 1024)
 UB512=$(get_moe 512)
 
-if [[ -z "$UB4096" || -z "$UB3072" || -z "$UB2048" || -z "$UB1024" || -z "$UB512" ]]; then
-    echo "ERROR: Nicht alle UB-Werte haben Ergebnisse. Finde ub=4096,3072,2048,1024,512."
+echo ""
+echo "  Gefundene MoE-Werte:"
+for ub in 4096 3072 2048 1024 512; do
+    val=""
+    case $ub in
+        4096) val="$UB4096" ;;
+        3072) val="$UB3072" ;;
+        2048) val="$UB2048" ;;
+        1024) val="$UB1024" ;;
+        512)  val="$UB512" ;;
+    esac
+    if [[ -n "$val" ]]; then
+        echo "    ✓ -ub=$ub → --n-cpu-moe=$val"
+    else
+        echo "    ⏭ -ub=$ub → (nicht gefunden)"
+    fi
+done
+
+# Prüfen ob mindestens ein Wert gefunden wurde
+if [[ -z "$UB4096" && -z "$UB3072" && -z "$UB2048" && -z "$UB1024" && -z "$UB512" ]]; then
     echo ""
+    echo "ERROR: Keine UB-Werte haben Ergebnisse. Abbruch."
     cat "$RESULTS_FILE"
     exit 1
 fi
 
 echo ""
-echo "  Gefundene MoE-Werte:"
-echo "    -ub 4096 → --n-cpu-moe=$UB4096"
-echo "    -ub 3072 → --n-cpu-moe=$UB3072"
-echo "    -ub 2048 → --n-cpu-moe=$UB2048"
-echo "    -ub 1024 → --n-cpu-moe=$UB1024"
-echo "    -ub  512 → --n-cpu-moe=$UB512"
-
-echo ""
 echo "=============================================="
 echo "  Step 2: benchmark_workload"
-echo "=============================================="
-echo "  Parameter für benchmark_workload:"
-echo "    -ub 4096  → --n-cpu-moe=$UB4096  (gefunden)"
-echo "    -ub 3072  → --n-cpu-moe=$UB3072  (gefunden)"
-echo "    -ub 2048  → --n-cpu-moe=$UB2048  (gefunden)"
-echo "    -ub 1024  → --n-cpu-moe=$UB1024  (gefunden)"
-echo "    -ub  512  → --n-cpu-moe=$UB512  (gefunden)"
 echo "=============================================="
 
 BASE_NAME=$(basename "$MODEL" | cut -d: -f1)
