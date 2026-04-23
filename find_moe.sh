@@ -2,9 +2,9 @@
 
 DEBUG=0
 MODEL=""
-MIN_CTX="98304"
-CTV="q8_0"
-CTK="q8_0"
+MIN_CTX="128000"
+CTV="f16"
+CTK="f16"
 
 # Array zum Tracken aller llama-server PIDs
 declare -a SERVER_PIDS
@@ -39,13 +39,13 @@ trap kill_all_servers EXIT INT TERM
 while [ $# -gt 0 ]; do
     case "$1" in
         --debug) DEBUG=1; shift ;;
-        -ctx) MIN_CTX="${2:-98304}"; shift 2 ;;
-        -ctv) CTV="${2:-q8_0}"; shift 2 ;;
-        -ctk) CTK="${2:-q8_0}"; shift 2 ;;
+        -ctx) MIN_CTX="${2:-128000}"; shift 2 ;;
+        -ctv) CTV="${2:-f16}"; shift 2 ;;
+        -ctk) CTK="${2:-f16}"; shift 2 ;;
         *)
             if [ -z "$MODEL" ]; then
                 MODEL="$1"
-            elif [ "$MIN_CTX" = "98304" ]; then
+            elif [ "$MIN_CTX" = "128000" ]; then
                 MIN_CTX="$1"
             fi
             shift ;;
@@ -54,7 +54,7 @@ done
 
 if [ -z "$MODEL" ]; then
     echo "Usage: $0 <model-hf-path> [min_ctx] [--debug]"
-    echo "  min_ctx  minimumer n_ctx-Wert (default: 98304)"
+    echo "  min_ctx  minimum n_ctx value (default: 128000)"
     echo "  --debug  verbose logging"
     exit 1
 fi

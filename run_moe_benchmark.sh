@@ -7,20 +7,20 @@
 set -euo pipefail
 
 MODEL=""
-CTX="98304"
+CTX="128000"
 DEBUG=0
-CTV="q8_0"
-CTK="q8_0"
+CTV="f16"
+CTK="f16"
 while [ $# -gt 0 ]; do
     case "$1" in
         --debug) DEBUG=1; shift ;;
-        -ctx) CTX="${2:-98304}"; shift 2 ;;
-        -ctv) CTV="${2:-q8_0}"; shift 2 ;;
-        -ctk) CTK="${2:-q8_0}"; shift 2 ;;
+        -ctx) CTX="${2:-128000}"; shift 2 ;;
+        -ctv) CTV="${2:-f16}"; shift 2 ;;
+        -ctk) CTK="${2:-f16}"; shift 2 ;;
         *)
             if [ -z "$MODEL" ]; then
                 MODEL="$1"
-            elif [ "$CTX" = "98304" ]; then
+            elif [ "$CTX" = "128000" ]; then
                 CTX="$1"
             fi
             shift ;;
@@ -31,9 +31,9 @@ if [ -z "$MODEL" ]; then
     echo "Usage: $0 <model-hf-path> [-ctx <context>] [-ctv <quant>] [-ctk <quant>] [--debug]"
     echo ""
     echo "  model-hf-path   z.B. bartowski/Qwen_Qwen3.6-35B-A3B-GGUF:Q4_XS"
-    echo "  -ctx <ctx>      optional: minimaler Kontext den das Modell haben soll (default: 98304)"
-    echo "  -ctv <quant>    optional: KV-Quant (default: q8_0)"
-    echo "  -ctk <quant>    optional: Token-Quant (default: q8_0)"
+    echo "  -ctx <ctx>      optional: minimum context the model should support (default: 128000)"
+    echo "  -ctv <quant>    optional: KV cache quantization (default: f16)"
+    echo "  -ctk <quant>    optional: Token quantization (default: f16)"
     echo "  --debug         optional: verbose logging"
     exit 1
 fi
