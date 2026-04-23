@@ -6,6 +6,36 @@ MIN_CTX="98304"
 CTV="q8_0"
 CTK="q8_0"
 
+# Array zum Tracken aller llama-server PIDs
+declare -a SERVER_PIDS
+
+# Cleanup-Funktion: tötet alle gestarteten llama-server Prozesse
+kill_all_servers() {
+    if [ ${#SERVER_PIDS[@]} -gt 0 ]; then
+        echo ""
+        echo "[CLEANUP] Töte ${#SERVER_PIDS[@]} verbleibende llama-server Prozess(e)..."
+        for pid in "${SERVER_PIDS[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                echo "  Killing PID $pid"
+                kill -TERM "$pid" 2>/dev/null
+            fi
+        done
+        # Kurz warten auf sauberen Exit
+        sleep 2
+        for pid in "${SERVER_PIDS[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                echo "  Force-killing PID $pid"
+                kill -9 "$pid" 2>/dev/null
+            fi
+        done
+        wait 2>/dev/null
+        echo "[CLEANUP] Done."
+    fi
+}
+
+# Trap für sauberen Exit (auch bei Ctrl+C / Signal)
+trap kill_all_servers EXIT INT TERM
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --debug) DEBUG=1; shift ;;
@@ -71,6 +101,7 @@ for ub in "${UB_VALUES[@]}"; do
 	
         llama-server -hf "$MODEL" -ctv $CTV -ctk $CTK -dev CUDA0 --parallel 1 --no-mmproj-offload -kvo -ub $ub -b $ub --n-cpu-moe $moe > "$LOGFILE" 2>&1 &
         SERVER_PID=$!
+        SERVER_PIDS+=("$SERVER_PID")
 
         # Poll log for n_seq_max line, kill as soon as found (max ~20s)
         FOUND=0
@@ -90,6 +121,27 @@ for ub in "${UB_VALUES[@]}"; do
             fi
             sleep 0.2
         done
+
+        # Server immer stoppen und aus PID-Array entfernen
+        if kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo "  Stopping llama-server PID $SERVER_PID"
+            kill -TERM "$SERVER_PID" 2>/dev/null
+            # Max 5s warten, sonst forcieren
+            for w in $(seq 1 25); do
+                if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+                    break
+                fi
+                sleep 0.2
+            done
+            if kill -0 "$SERVER_PID" 2>/dev/null; then
+                echo "  Force-killing PID $SERVER_PID (SIGKILL)"
+                kill -9 "$SERVER_PID" 2>/dev/null
+            fi
+        fi
+        wait "$SERVER_PID" 2>/dev/null
+
+        # PID aus Tracking-Array entfernen (durch Neuaufbau)
+        SERVER_PIDS=(${SERVER_PIDS[@]/"$SERVER_PID"})
 
         if [ "$FOUND" -eq 0 ]; then
             if [ -f "$LOGFILE" ]; then
@@ -111,9 +163,6 @@ for ub in "${UB_VALUES[@]}"; do
             rm -f "$LOGFILE"
             continue
         fi
-
-        kill "$SERVER_PID" 2>/dev/null
-        wait "$SERVER_PID" 2>/dev/null
 
         N_CTX=$(grep -A1 "n_seq_max" "$LOGFILE" | grep "n_ctx" | sed 's/.*n_ctx *= *\([0-9]*\).*/\1/' | head -1)
         rm -f "$LOGFILE"
