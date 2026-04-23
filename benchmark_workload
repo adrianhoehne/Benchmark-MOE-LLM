@@ -8,17 +8,17 @@
 #   --ub2-moe <wert>    → -ub2 2048 → --n-cpu-moe <wert>
 #   --ub3-moe <wert>    → -ub3 3072 → --n-cpu-moe <wert>
 #   --ub4-moe <wert>    → -ub4 4096 → --n-cpu-moe <wert>
-#
-#
-# Fehlende Werte (leere Strings) werden einfach übersprungen.
+
+# Alle verfügbaren PP-Werte
+ALL_PP_VALUES="96000,64000,32000,16000,8000,4000,2000,1000,500"
 
 RESULTS_FILE="$1"
 MODEL="$2"
 shift 2
 
-CTX="98304"
-CTV="q8_0"
-CTK="q8_0"
+CTX="128000"
+CTV="f16"
+CTK="f16"
 
 # --- Argumente parsen ---
 while [[ $# -gt 0 ]]; do
@@ -34,9 +34,6 @@ while [[ $# -gt 0 ]]; do
         *) shift ;;
     esac
 done
-
-# Alle verfügbaren PP-Werte
-ALL_PP_VALUES="32000,16000,8000,4000,2000,1000,500"
 
 # PP-Werte filtern: CTX ist aus Nutzersicht das Min-Kontext →
 # wir filtern PP-Werte, die > CTX liegen (nur Werte ≤ CTX verwenden)
@@ -120,5 +117,8 @@ echo "=============================================="
 echo ""
 
 # --- Hyperfine aufrufen mit dynamischen Kommandos ---
-exec hyperfine --runs 2 --export-markdown "$RESULTS_FILE" --parameter-list PP "$PP_VALUES" \ 
-    "${HYPERFINE_CMDS[@]}"
+echo "Argument Results File: $RESULTS_FILE"
+echo "Argument PP Values:    $PP_VALUES"
+echo "Argument CMDS:         ${HYPERFINE_CMDS[@]}"
+echo "Start..."
+exec hyperfine --runs 2 --export-markdown "$RESULTS_FILE" --parameter-list PP "$PP_VALUES" "${HYPERFINE_CMDS[@]}" --show-output
