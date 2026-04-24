@@ -4,10 +4,10 @@
 #
 # Feste Zuordnung:
 #   --ub0.5-moe <wert>  → -ub 512   → --n-cpu-moe <wert>
-#   --ub1-moe <wert>    → -ub1 1024 → --n-cpu-moe <wert>
-#   --ub2-moe <wert>    → -ub2 2048 → --n-cpu-moe <wert>
-#   --ub3-moe <wert>    → -ub3 3072 → --n-cpu-moe <wert>
-#   --ub4-moe <wert>    → -ub4 4096 → --n-cpu-moe <wert>
+#   --ub1-moe <wert>    → -ub 1024  → --n-cpu-moe <wert>
+#   --ub2-moe <wert>    → -ub 2048  → --n-cpu-moe <wert>
+#   --ub3-moe <wert>    → -ub 3072  → --n-cpu-moe <wert>
+#   --ub4-moe <wert>    → -ub 4096  → --n-cpu-moe <wert>
 
 # Alle verfügbaren PP-Werte
 ALL_PP_VALUES="96000,64000,32000,16000,8000,4000,2000,1000,500"
@@ -50,10 +50,10 @@ IFS=',' PP_VALUES="${PP_FILTERED[*]}"
 # --- UB-Parameter und Modell-Zuordnung ---
 declare -A UB_MAP=(
     [512]="ub"
-    [1024]="ub1"
-    [2048]="ub2"
-    [3072]="ub3"
-    [4096]="ub4"
+    [1024]="ub"
+    [2048]="ub"
+    [3072]="ub"
+    [4096]="ub"
 )
 
 declare -A MOE_MODEL=(
